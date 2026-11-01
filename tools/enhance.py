@@ -90,19 +90,19 @@ for cls, dd in re.findall(r'<dt><span class="sig (\w)"[^>]*>.*?</span></dt><dd>(
 d = re.sub(r'<dt><span class="sig (\w)"', r'<dt id="sig-\1"><span class="sig \1"', d)
 
 # ---------- apparatus categories ----------
-CAT_TARGET = {
-    "Framework numbers in the name lists": ("removed-1", "Framework numbers and headings"),
-    "Other framework numbers": ("removed-1", "Framework numbers and headings"),
-    "Priestly framework and narrative": ("removed-2", "Priestly framework and narrative"),
-    "Priestly departure notice": ("removed-2", "Priestly framework and narrative"),
-    "Linking layer": ("removed-3", "The linking layer"),
-    "Etiological note": ("removed-4", "Glosses"),
-    "Southern addition": ("removed-11", "The southern addition"),
-    "Table of Nations": ("removed-12", "The Table of Nations"),
-    "Saying in the narrator": ("removed-12", "The Table of Nations"),
-    "Genealogies of peoples": ("removed-13", "The genealogies of peoples"),
-    "Later additions coded detachable": ("removed-7", "Canaan in Gen 9, and the Sodom story"),
-    "Set aside, not tested": (None, None),
+CAT_TARGET = {  # apparatus row -> (preface item, its short title, color group)
+    "Framework numbers in the name lists": ("removed-1", "Framework numbers and headings", "framework"),
+    "Other framework numbers": ("removed-1", "Framework numbers and headings", "framework"),
+    "Priestly framework and narrative": ("removed-2", "Priestly framework and narrative", "priestly"),
+    "Priestly departure notice": ("removed-2", "Priestly framework and narrative", "priestly"),
+    "Linking layer": ("removed-3", "The linking layer", "linking"),
+    "Etiological note": ("removed-4", "Glosses", "later"),
+    "Southern addition": ("removed-11", "The southern addition", "southern"),
+    "Table of Nations": ("removed-12", "The Table of Nations", "peoples"),
+    "Saying in the narrator": ("removed-12", "The Table of Nations", "peoples"),
+    "Genealogies of peoples": ("removed-13", "The genealogies of peoples", "peoples"),
+    "Later additions coded detachable": ("removed-7", "Canaan in Gen 9, and the Sodom story", "later"),
+    "Set aside, not tested": (None, None, "aside"),
 }
 cats = []
 cat_of = {}
@@ -112,7 +112,7 @@ ref_pieces = []  # (row index, piece text, first verse)
 for i, row in enumerate(rows):
     name = html.unescape(re.sub("<[^>]+>", "", row.group(1)))
     target = next(v for k, v in CAT_TARGET.items() if name.startswith(k))
-    cats.append({"name": name, "row": "app-%d" % (i + 1), "why": target[0], "whyLabel": target[1]})
+    cats.append({"name": name, "row": "app-%d" % (i + 1), "why": target[0], "whyLabel": target[1], "g": target[2]})
     ch = None
     pieces = []
     for part in row.group(3).split(";"):
@@ -263,13 +263,16 @@ def linkrow(m):
 tail = re.sub(r'<tr><th scope="row">(.*?)</th><td class="n">(\d+)</td><td class="refs">(.*?)</td></tr>', linkrow, tail)
 d = head + tail
 
+# ---------- removed verses, kept in the page for the inline mode (layers.py places them) ----------
+removed_verses = {"%d:%d" % k: [web[k], heb[k]] for k in missing}
+json.dump(removed_verses, open(out + ".removed.json", "w", encoding="utf-8"), ensure_ascii=False)
+
 # ---------- data for the popovers ----------
 data = {
     "cats": cats,
     "legend": legend,
     "gaps": {r["id"]: {"c": r["c"], "a": r["a"], "b": r["b"], "whole": r["whole"],
                        "segs": [[s[0], s[1], s[2]] for s in r["segs"]]} for r in runs},
-    "v": {"%d:%d" % k: [web[k], heb[k]] for k in missing},
 }
 blob = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 d = d.replace("<script>\n(function(){", '<script type="application/json" id="jg-data">' + blob + "</script>\n<script>\n(function(){", 1)

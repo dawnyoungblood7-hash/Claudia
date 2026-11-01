@@ -8,17 +8,13 @@
 
   function rng(c,a,z){return c+':'+a+(a===z?'':'–'+z);}
   function navH(){return nav.getBoundingClientRect().bottom;}
-  var ACC=/[֑-ֽ֯]/g, VOW=/[ְ-ׇּֿׁׂׅׄ]/g;
-  function point(root){
-    var m=(document.getElementById('point')||{}).getAttribute? document.getElementById('point').getAttribute('data-mode')||'full':'full';
-    if(m==='full')return;
-    var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null),n;
-    while((n=w.nextNode())){var t=n.nodeValue.replace(ACC,'');if(m==='cons')t=t.replace(VOW,'');n.nodeValue=t;}
-  }
   function where(el){
     var vp=el.closest('.vp'); if(vp){var m=vp.id.match(/^v(\d+)-(\d+)$/); return m[1]+':'+m[2];}
     var g=el.getAttribute('data-gap'); if(g){var x=data.gaps[g]; return x.whole?'Genesis '+x.c:rng(x.c,x.a,x.b);}
     var tr=el.closest('tr'); if(tr)return 'the apparatus';
+    if(el.closest('#seams'))return 'Seams';
+    if(el.closest('#preface'))return 'the preface';
+    if(el.closest('nav'))return 'the text';
     return 'the text';
   }
 
@@ -60,7 +56,7 @@
     h+='<p>'+n+(n===1?' verse':' verses')+' of the base text removed here.</p><ul>';
     g.segs.forEach(function(s){
       var cat=data.cats[s[0]];
-      h+='<li><strong>'+rng(g.c,s[1],s[2])+'</strong> '+cat.name+'<div class="links">';
+      h+='<li><span class="sw" style="background:var(--om-'+cat.g+')"></span><strong>'+rng(g.c,s[1],s[2])+'</strong> '+cat.name+'<div class="links">';
       h+=cat.why?'<a href="#'+cat.why+'" data-jump>Why: '+cat.whyLabel+' →</a>':'<span class="note">No rationale in the preface yet.</span>';
       h+='<a href="#'+cat.row+'" data-jump>Apparatus →</a></div></li>';
     });
@@ -72,9 +68,13 @@
     if(!box.hidden){box.hidden=true;btn.setAttribute('aria-expanded','false');btn.textContent='Show the omitted verses';return;}
     if(!box.firstChild){
       var h='<p class="note">English: World English Bible, current edition, in Hebrew verse numbering; its wording can differ slightly from the base text above. Hebrew: Westminster Leningrad Codex.</p>';
-      for(var v=g.a;v<=g.b;v++){var x=data.v[g.c+':'+v];
-        h+='<div class="ov"><span class="en"><span class="r">'+g.c+':'+v+'</span>'+x[0].replace(/[&<>]/g,function(ch){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[ch];})+'</span><span class="heb" lang="he" dir="rtl">'+x[1]+'</span></div>';}
-      box.innerHTML=h; point(box);
+      var rv=document.querySelectorAll('.rmv[data-gap="'+btn.getAttribute('data-show')+'"]');
+      for(var i=0;i<rv.length;i++){
+        var en=rv[i].querySelector('.en').cloneNode(true), tag=en.querySelector('.rmtag'); if(tag)tag.remove();
+        var sv=en.querySelector('sup.v'); if(sv)sv.remove();
+        h+='<div class="ov"><span class="en"><span class="r">'+rv[i].getAttribute('data-ref')+'</span>'+en.innerHTML+'</span><span class="heb" lang="he" dir="rtl">'+rv[i].querySelector('.he').innerHTML.replace(/<sup class="hv">\d+<\/sup>/,'')+'</span></div>';
+      }
+      box.innerHTML=h;
     }
     box.hidden=false; btn.setAttribute('aria-expanded','true'); btn.textContent='Hide the omitted verses';
   }
@@ -91,6 +91,7 @@
     go(t);
     if(t.classList.contains('gap'))t.focus({preventScroll:true});
   }
+  window.jgJump=jump;
   back.addEventListener('click',function(){
     if(returnTo){go(returnTo); if(returnTo.focus)returnTo.focus({preventScroll:true});}
     back.hidden=true; returnTo=null;
